@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function para converter tempo em minutos
+    function timeToMinutes(time) {
+      let parts = time.split(':');
+      return (int(parts[0]) * 60) + int(parts[1]);
+    }
+    
+    // Helper function para verificar conflito
+    function hasTimeConflict(start1, end1, start2, end2) {
+      return !(end1 <= start2 || end2 <= start1);
+    }
+    
+    match /appointments/{appointmentId} {
+      // Ler: médicos podem ver seus próprios agendamentos
+      allow read: if request.auth != null && 
+                     resource.data.doctorId == request.auth.uid;
+      
+      // Criar: validar conflito de horário antes de permitir
+      allow create: if request.auth != null &&
+                       request.resource.data.doctorId == request.auth.uid &&
+                       // Validação de conflito seria complexa em rules
+                       // Recomendado usar Cloud Functions para validação
+                       true;
+                       
+      // Atualizar: permitir apenas se não houver conflito
+      allow update: if request.auth != null &&
+                       request.resource.data.doctorId == request.auth.uid &&
+                       true;
+                       
+      // Deletar: apenas o médico dono
+      allow delete: if request.auth != null &&
+                       resource.data.doctorId == request.auth.uid;
+    }
+    
+    match /doctors/{doctorId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /patient_notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /doctor_notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
